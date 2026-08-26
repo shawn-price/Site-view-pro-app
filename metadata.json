@@ -1,0 +1,6 @@
+{
+  "name": "SiteView Pro",
+  "description": "Interactive military binoculars camera HUD and job mode selector for painting, plastering, and screeding site measurements.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
