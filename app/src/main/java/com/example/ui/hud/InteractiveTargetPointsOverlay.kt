@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -78,6 +79,7 @@ fun InteractiveTargetPointsOverlay(
     onSelectPoint: (String?) -> Unit,
     onDeletePoint: (String) -> Unit,
     onSelectFace: (String?) -> Unit = {},
+    onPinchZoom: (Float) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pin_pulse")
@@ -107,6 +109,13 @@ fun InteractiveTargetPointsOverlay(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
+                detectTransformGestures(panZoomLock = true) { _, _, zoom, _ ->
+                    if (zoom != 1.0f) {
+                        onPinchZoom(zoom)
+                    }
+                }
+            }
+            .pointerInput(targetPoints, selectedPointId, spatialFaces, selectedFaceId) {
                 detectTapGestures { offset ->
                     val normX = offset.x / size.width
                     val normY = offset.y / size.height

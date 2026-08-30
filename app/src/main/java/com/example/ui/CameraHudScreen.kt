@@ -69,6 +69,7 @@ import com.example.ui.hud.BottomDynamicTelemetryCard
 import com.example.ui.hud.InteractiveTargetPointsOverlay
 import com.example.ui.hud.JobModeSelectorBar
 import com.example.ui.hud.JobSpecBottomSheet
+import com.example.ui.hud.MilitaryBinocularZoomBar
 import com.example.ui.hud.PaintPropertyPaletteSheet
 import com.example.ui.hud.ProjectControlsBar
 import com.example.ui.hud.TacticalSideControlRail
@@ -176,6 +177,7 @@ fun CameraHudScreen(
                     onSelectPoint = { id -> viewModel.selectPoint(id) },
                     onDeletePoint = { id -> viewModel.deletePoint(id) },
                     onSelectFace = { faceId -> viewModel.selectSpatialFace(faceId) },
+                    onPinchZoom = { delta -> viewModel.onPinchZoom(delta) },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -214,7 +216,8 @@ fun CameraHudScreen(
                     pitchDeg = pitchDeg,
                     rollDeg = rollDeg,
                     azimuthDeg = azimuthDeg,
-                    onBatteryClick = { viewModel.cycleBatteryState() }
+                    onBatteryClick = { viewModel.cycleBatteryState() },
+                    onToggleTorch = { viewModel.toggleTorch() }
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -287,8 +290,15 @@ fun CameraHudScreen(
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
                 } else {
-                    // Dynamic Telemetry Metrics Card
+                    // Military Binocular Magnification Quick-Bar (1x, 2x, 4x, 8x)
                     if (uiState.overlaysVisible) {
+                        MilitaryBinocularZoomBar(
+                            currentZoom = uiState.zoomLevel,
+                            onSelectZoom = { z -> viewModel.setZoomLevel(z) },
+                            activeColor = primaryColor
+                        )
+
+                        // Dynamic Telemetry Metrics Card
                         BottomDynamicTelemetryCard(
                             uiState = uiState
                         )

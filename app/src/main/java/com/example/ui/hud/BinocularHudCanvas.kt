@@ -566,6 +566,69 @@ private fun DrawScope.drawCenterTacticalReticle(
         strokeWidth = 1.8.dp.toPx()
     )
 
+    // Military Binocular Reticle Markings (1x, 2x, 4x, 8x Optic Stadia Ticks)
+    if (zoomLevel >= 1.5f) {
+        val milTickColor = secondaryColor.copy(alpha = 0.75f)
+        val tickLen = 4.dp.toPx()
+        // Horizontal stadia mil ticks
+        for (i in 1..4) {
+            val dist = centerGap + (crossHairLen * i / 4f)
+            // Left ticks
+            drawLine(
+                color = milTickColor,
+                start = Offset(cx - dist, cy - tickLen),
+                end = Offset(cx - dist, cy + tickLen),
+                strokeWidth = 1.dp.toPx()
+            )
+            // Right ticks
+            drawLine(
+                color = milTickColor,
+                start = Offset(cx + dist, cy - tickLen),
+                end = Offset(cx + dist, cy + tickLen),
+                strokeWidth = 1.dp.toPx()
+            )
+            // Vertical ticks
+            drawLine(
+                color = milTickColor,
+                start = Offset(cx - tickLen, cy - dist),
+                end = Offset(cx + tickLen, cy - dist),
+                strokeWidth = 1.dp.toPx()
+            )
+            drawLine(
+                color = milTickColor,
+                start = Offset(cx - tickLen, cy + dist),
+                end = Offset(cx + tickLen, cy + dist),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+    }
+
+    // High Power (4x, 8x) Sub-mil Precision Range Estimation Grid
+    if (zoomLevel >= 3.5f) {
+        val subMilColor = primaryColor.copy(alpha = 0.5f)
+        val dotRadius = 1.2.dp.toPx()
+        // Sub-mil dots in quadrants
+        val qDist = 18.dp.toPx()
+        drawCircle(color = subMilColor, radius = dotRadius, center = Offset(cx - qDist, cy - qDist))
+        drawCircle(color = subMilColor, radius = dotRadius, center = Offset(cx + qDist, cy - qDist))
+        drawCircle(color = subMilColor, radius = dotRadius, center = Offset(cx - qDist, cy + qDist))
+        drawCircle(color = subMilColor, radius = dotRadius, center = Offset(cx + qDist, cy + qDist))
+
+        // Military Stadiametric Range Curve in Lower-Left Quadrant
+        val stadiametricPath = Path().apply {
+            moveTo(cx - 36.dp.toPx(), cy + 24.dp.toPx())
+            quadraticBezierTo(
+                cx - 24.dp.toPx(), cy + 32.dp.toPx(),
+                cx - 14.dp.toPx(), cy + 34.dp.toPx()
+            )
+        }
+        drawPath(
+            path = stadiametricPath,
+            color = primaryColor.copy(alpha = 0.6f),
+            style = Stroke(width = 1.2.dp.toPx())
+        )
+    }
+
     // Mode-specific reticle embellishment
     when (jobMode) {
         JobMode.PAINTING -> {

@@ -289,13 +289,58 @@ class CameraHudViewModel : ViewModel() {
         }
     }
 
+    companion object {
+        val MILITARY_BINOCULAR_MAGNIFICATIONS = listOf(1.0f, 2.0f, 4.0f, 8.0f)
+    }
+
     fun setZoomLevel(zoom: Float) {
+        val clamped = zoom.coerceIn(1.0f, 8.0f)
+        val rounded = (Math.round(clamped * 10f) / 10f)
+        val description = when {
+            rounded >= 7.8f -> "8.0X [8X MILITARY HIGH-POWER]"
+            rounded in 3.8f..4.2f -> "4.0X [4X RECON MAGNIFICATION]"
+            rounded in 1.8f..2.2f -> "2.0X [2X OPTICAL ENHANCE]"
+            rounded <= 1.1f -> "1.0X [1X WIDE TACTICAL FOV]"
+            else -> "%.1fX [BINOCULAR MAG]".format(rounded)
+        }
         _uiState.update {
             it.copy(
-                zoomLevel = zoom,
-                lastActionNotification = "MAGNIFICATION: %.1fX".format(zoom)
+                zoomLevel = rounded,
+                lastActionNotification = "MAGNIFICATION: $description"
             )
         }
+    }
+
+    fun onPinchZoom(deltaScale: Float) {
+        val current = _uiState.value.zoomLevel
+        val target = (current * deltaScale).coerceIn(1.0f, 8.0f)
+        val rounded = (Math.round(target * 10f) / 10f)
+        if (abs(rounded - current) >= 0.1f) {
+            val description = when {
+                rounded >= 7.8f -> "8.0X [8X MIL HIGH-POWER]"
+                rounded in 3.8f..4.2f -> "4.0X [4X RECON MAG]"
+                rounded in 1.8f..2.2f -> "2.0X [2X OPTICAL]"
+                rounded <= 1.1f -> "1.0X [1X WIDE FOV]"
+                else -> "%.1fX [DETAIL INSPECT]".format(rounded)
+            }
+            _uiState.update {
+                it.copy(
+                    zoomLevel = rounded,
+                    lastActionNotification = "PINCH ZOOM: $description"
+                )
+            }
+        }
+    }
+
+    fun cycleBinocularZoom() {
+        val current = _uiState.value.zoomLevel
+        val next = when {
+            current < 1.8f -> 2.0f
+            current < 3.8f -> 4.0f
+            current < 7.8f -> 8.0f
+            else -> 1.0f
+        }
+        setZoomLevel(next)
     }
 
     fun toggleTorch() {

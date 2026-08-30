@@ -2,6 +2,7 @@ package com.example.ui.hud
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -32,8 +33,10 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -59,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import com.example.model.HudFilterMode
 import com.example.model.JobMode
 import com.example.viewmodel.HudUiState
+import kotlin.math.abs
 
 @Composable
 fun TopTacticalStatusHeader(
@@ -67,6 +71,7 @@ fun TopTacticalStatusHeader(
     rollDeg: Float,
     azimuthDeg: Float,
     onBatteryClick: () -> Unit = {},
+    onToggleTorch: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val activeMode = uiState.activeJobMode
@@ -145,11 +150,12 @@ fun TopTacticalStatusHeader(
                 }
             }
 
-            // Right: Battery Indicator, Signal & Laser Rangefinder Status
+            // Right: Battery Indicator, Dedicated Torch / Flash Button, Signal & Laser Rangefinder Status
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Top Row: Battery & Signal
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -184,28 +190,40 @@ fun TopTacticalStatusHeader(
                     }
                 }
 
-                // Laser Rangefinder Status Badge
+                // Bottom Row: Dedicated Flash/Torch Control & Laser Rangefinder Status
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    modifier = Modifier
-                        .background(Color(0xFF0A0C0B), RoundedCornerShape(4.dp))
-                        .border(1.dp, if (uiState.laserRangerActive) Color(0xFFEF4444) else Color(0xFF262C2A), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
+                    // Dedicated Flash / Torch Illuminator Control Button with Live State Sync
+                    TacticalTorchIndicator(
+                        isTorchOn = uiState.isTorchOn,
+                        onClick = onToggleTorch
+                    )
+
+                    // Laser Rangefinder Status Badge
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                         modifier = Modifier
-                            .size(5.dp)
-                            .clip(CircleShape)
-                            .background(if (uiState.laserRangerActive) Color(0xFFEF4444) else Color(0xFF64748B))
-                    )
-                    Text(
-                        text = if (uiState.laserRangerActive) "LRF: %.2fm".format(uiState.currentRangeMeters) else "LRF: STBY",
-                        color = if (uiState.laserRangerActive) Color(0xFFFCA5A5) else Color(0xFF94A3B8),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
+                            .background(Color(0xFF0A0C0B), RoundedCornerShape(4.dp))
+                            .border(1.dp, if (uiState.laserRangerActive) Color(0xFFEF4444) else Color(0xFF262C2A), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(if (uiState.laserRangerActive) Color(0xFFEF4444) else Color(0xFF64748B))
+                        )
+                        Text(
+                            text = if (uiState.laserRangerActive) "LRF: %.2fm".format(uiState.currentRangeMeters) else "LRF: STBY",
+                            color = if (uiState.laserRangerActive) Color(0xFFFCA5A5) else Color(0xFF94A3B8),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
                 }
             }
         }
@@ -359,6 +377,63 @@ fun TacticalBatteryIndicator(
                 )
             }
         }
+    }
+}
+
+/**
+ * Dedicated Tactical Flash / Torch Illuminator Control Button.
+ * Allows quick one-touch toggling to illuminate the construction site area during low-light measurements,
+ * with animated glowing amber border and synchronized hardware/preview status.
+ */
+@Composable
+fun TacticalTorchIndicator(
+    isTorchOn: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "torch_pulse")
+    val pulseGlow by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "torch_glow"
+    )
+
+    val torchColor = if (isTorchOn) Color(0xFFFFD000) else Color(0xFF64748B)
+    val containerBg = if (isTorchOn) Color(0xFFFFD000).copy(alpha = 0.22f * pulseGlow) else Color(0xFF0A0C0B)
+    val borderColor = if (isTorchOn) Color(0xFFFFD000).copy(alpha = pulseGlow) else Color(0xFF262C2A)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(containerBg)
+            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .testTag("top_torch_toggle_button")
+    ) {
+        Icon(
+            imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+            contentDescription = if (isTorchOn) "Torch Illuminated" else "Torch Off",
+            tint = if (isTorchOn) Color(0xFFFFD000) else Color(0xFF94A3B8),
+            modifier = Modifier.size(12.dp)
+        )
+        Text(
+            text = if (isTorchOn) "FLASH: ON" else "FLASH: OFF",
+            color = if (isTorchOn) Color(0xFFFEF08A) else Color(0xFF94A3B8),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
     }
 }
 
@@ -600,11 +675,11 @@ fun TacticalSideControlRail(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Magnification Selector
-        val zoomLevels = listOf(1.0f, 2.0f, 5.0f)
-        val nextZoom = when (uiState.zoomLevel) {
-            1.0f -> 2.0f
-            2.0f -> 5.0f
+        // Military Binocular Magnification Selector (Cycles 1X -> 2X -> 4X -> 8X -> 1X)
+        val nextZoom = when {
+            uiState.zoomLevel < 1.8f -> 2.0f
+            uiState.zoomLevel < 3.8f -> 4.0f
+            uiState.zoomLevel < 7.8f -> 8.0f
             else -> 1.0f
         }
         TacticalIconButton(
@@ -670,6 +745,93 @@ fun TacticalSideControlRail(
             onClick = onUndoPin,
             testTag = "undo_pin_button"
         )
+    }
+}
+
+/**
+ * Tactical Military Binocular Magnification Selector Deck
+ * Emulates military binocular discrete steps (1X, 2X, 4X, 8X) for rapid wall and ceiling detail inspection.
+ */
+@Composable
+fun MilitaryBinocularZoomBar(
+    currentZoom: Float,
+    onSelectZoom: (Float) -> Unit,
+    activeColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val zoomSteps = listOf(
+        1.0f to "1X",
+        2.0f to "2X",
+        4.0f to "4X",
+        8.0f to "8X"
+    )
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .testTag("military_binocular_zoom_bar"),
+        color = Color(0xDE0A0C0B),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF262C2A)),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ZoomIn,
+                contentDescription = "Magnification",
+                tint = activeColor,
+                modifier = Modifier
+                    .size(15.dp)
+                    .padding(start = 2.dp)
+            )
+
+            zoomSteps.forEach { (zoomValue, label) ->
+                val isSelected = abs(currentZoom - zoomValue) < 0.25f
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (isSelected) activeColor.copy(alpha = 0.28f)
+                            else Color.Transparent
+                        )
+                        .border(
+                            width = if (isSelected) 1.dp else 0.dp,
+                            color = if (isSelected) activeColor else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onSelectZoom(zoomValue) }
+                        )
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .testTag("zoom_step_$label"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        color = if (isSelected) activeColor else Color(0xFF94A3B8),
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            // Real-time continuous zoom scale readout
+            Text(
+                text = "%.1fX".format(currentZoom),
+                color = Color(0xFFFEF08A),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
     }
 }
 
